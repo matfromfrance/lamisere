@@ -1,0 +1,336 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>La misère</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; padding: 15px; background: #121212; color: #fff; max-width: 700px; margin: 0 auto; }
+    h1, h2 { text-align: center; color: #4caf50; margin-bottom: 10px; }
+    .card { background: #1e1e1e; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #333; }
+    input, button { width: 100%; padding: 10px; margin: 5px 0; border-radius: 5px; border: none; font-size: 16px; box-sizing: border-box; }
+    button { background: #4caf50; color: white; font-weight: bold; cursor: pointer; }
+    button:hover { opacity: 0.9; }
+    .player-row { display: flex; gap: 10px; margin-bottom: 8px; align-items: center; }
+    .player-row input { margin: 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+    th, td { border: 1px solid #333; padding: 6px; text-align: center; }
+    th { background: #2e2e2e; }
+    .badge { background: #ff9800; color: #000; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    .hidden { display: none; }
+    .alert-text { color: #ff5252; font-weight: bold; margin-top: 10px; text-align: center; }
+    .table-container { overflow-x: auto; }
+    .history-cell { font-size: 12px; }
+    .score-cumul { font-size: 11px; opacity: 0.8; }
+  </style>
+</head>
+<body>
+
+  <h1>La misère</h1>
+
+  <!-- STEP 1: CONFIGURATION -->
+  <div id="step-config" class="card">
+    <h2>Configuration</h2>
+    <label for="nbJoueurs">Nombre de joueurs :</label>
+    <input type="number" id="nbJoueurs" min="2" max="10" value="4"
+      onfocus="if(this.value==='4' || this.value==='0') this.value='';" 
+      onblur="if(this.value==='') this.value='4';" 
+      onchange="genererChampsNoms()">
+    
+    <div id="zone-noms"></div>
+
+    <button onclick="demarrerPartie()">Démarrer la partie</button>
+  </div>
+
+  <!-- STEP 2: CHOIX DU PREMIER DISTRIBUTEUR -->
+  <div id="step-dealer" class="card hidden">
+    <h2>Premier Distributeur</h2>
+    <p style="text-align: center;">Qui distribue au Tour 1 ?</p>
+    <div id="zone-choix-dealer"></div>
+  </div>
+
+  <!-- STEP 3: JEU (TOURS) -->
+  <div id="step-game" class="card hidden">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h2 id="titre-tour" style="margin:0;">Tour 1</h2>
+      <span id="dealer-actuel" class="badge"></span>
+    </div>
+    <p style="text-align: center; color: #aaa;" id="info-cartes"></p>
+
+    <!-- Phase Annonces -->
+    <div id="phase-annonces">
+      <h3>1. Annonces des plis</h3>
+      <div id="inputs-annonces"></div>
+      <button id="btn-valider-annonces" onclick="validerAnnonces()">Valider les annonces</button>
+    </div>
+
+    <!-- Phase Résultats -->
+    <div id="phase-resultats" class="hidden">
+      <h3>2. Plis réalisés</h3>
+      <div id="inputs-resultats"></div>
+      <p id="alert-resultats" class="alert-text hidden"></p>
+      <button id="btn-valider-resultats" onclick="validerTour()">Valider le tour</button>
+    </div>
+  </div>
+
+  <!-- TABLEAU DES SCORES EN DIRECT -->
+  <div id="step-scores" class="card hidden">
+    <h3>Scores actuels</h3>
+    <table>
+      <thead>
+        <tr><th>Joueur</th><th>Score</th></tr>
+      </thead>
+      <tbody id="body-scores"></tbody>
+    </table>
+  </div>
+
+  <!-- HISTORIQUE COMPLET DES TOURS -->
+  <div id="step-history" class="card hidden">
+    <h3>Synthèse de la partie</h3>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr id="head-history">
+            <th>Tour</th>
+            <th>Cartes</th>
+          </tr>
+        </thead>
+        <tbody id="body-history"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- STEP 4: CLASSEMENT FINAL -->
+  <div id="step-final" class="card hidden">
+    <h2>🎉 Fin de la partie !</h2>
+    <p style="text-align: center;">Voici le classement final :</p>
+    <table>
+      <thead>
+        <tr><th>Pos.</th><th>Joueur</th><th>Score Final</th></tr>
+      </thead>
+      <tbody id="body-classement"></tbody>
+    </table>
+    <button onclick="location.reload()" style="margin-top: 15px;">Nouvelle Partie</button>
+  </div>
+
+  <script>
+    let joueurs = [];
+    let sequenceTours = [];
+    let tourIndex = 0;
+    let donneurIndex = 0;
+    let annoncesTemp = [];
+    let historiqueTours = [];
+
+    function genererChampsNoms() {
+      const nbInput = document.getElementById('nbJoueurs');
+      const nb = parseInt(nbInput.value) || 4;
+      const zone = document.getElementById('zone-noms');
+      zone.innerHTML = '<h3>Noms des joueurs :</h3>';
+      for (let i = 0; i < nb; i++) {
+        zone.innerHTML += `
+          <input type="text" class="nom-joueur" placeholder="Joueur ${i + 1}" value="Joueur ${i + 1}"
+            onfocus="if(this.value==='Joueur ${i + 1}') this.value='';" 
+            onblur="if(this.value==='') this.value='Joueur ${i + 1}';">`;
+      }
+    }
+    genererChampsNoms();
+
+    function demarrerPartie() {
+      const inputs = document.querySelectorAll('.nom-joueur');
+      joueurs = Array.from(inputs).map((inp, idx) => ({ 
+        nom: inp.value.trim() || `Joueur ${idx + 1}`, 
+        score: 0 
+      }));
+      const nbJ = joueurs.length;
+
+      let maxCartes = Math.floor(52 / nbJ);
+      if (52 % nbJ === 0) maxCartes -= 1;
+
+      sequenceTours = [];
+      for (let i = 1; i <= maxCartes; i++) sequenceTours.push(i);
+      for (let i = maxCartes; i >= 1; i--) sequenceTours.push(i);
+
+      document.getElementById('step-config').classList.add('hidden');
+      document.getElementById('step-dealer').classList.remove('hidden');
+
+      const zoneDealer = document.getElementById('zone-choix-dealer');
+      zoneDealer.innerHTML = '';
+      joueurs.forEach((j, idx) => {
+        zoneDealer.innerHTML += `<button onclick="choisirDealer(${idx})" style="margin-bottom: 8px;">${j.nom}</button>`;
+      });
+    }
+
+    function choisirDealer(idx) {
+      donneurIndex = idx;
+      document.getElementById('step-dealer').classList.add('hidden');
+      document.getElementById('step-game').classList.remove('hidden');
+      document.getElementById('step-scores').classList.remove('hidden');
+      document.getElementById('step-history').classList.remove('hidden');
+      
+      preparerEnteteHistorique();
+      afficherTour();
+      afficherScores();
+    }
+
+    function preparerEnteteHistorique() {
+      const head = document.getElementById('head-history');
+      head.innerHTML = '<th>Tour</th><th>Cartes</th>';
+      joueurs.forEach(j => {
+        head.innerHTML += `<th>${j.nom}<br><small>(Ann/Fait • Total)</small></th>`;
+      });
+    }
+
+    function afficherTour() {
+      const cartes = sequenceTours[tourIndex];
+      document.getElementById('titre-tour').innerText = `Tour ${tourIndex + 1} / ${sequenceTours.length}`;
+      document.getElementById('info-cartes').innerText = `Nombre de carte(s) distribuée(s) : ${cartes}`;
+      document.getElementById('dealer-actuel').innerText = `Donneur : ${joueurs[donneurIndex].nom}`;
+
+      document.getElementById('phase-annonces').classList.remove('hidden');
+      document.getElementById('phase-resultats').classList.add('hidden');
+      document.getElementById('alert-resultats').classList.add('hidden');
+
+      const zoneAnnonces = document.getElementById('inputs-annonces');
+      zoneAnnonces.innerHTML = '';
+
+      for (let i = 0; i < joueurs.length; i++) {
+        const jIdx = (donneurIndex + i) % joueurs.length;
+        const estDonneur = i === 0 ? ' (Donneur)' : '';
+        zoneAnnonces.innerHTML += `
+          <div class="player-row">
+            <span style="flex:1;">${joueurs[jIdx].nom}${estDonneur} :</span>
+            <input type="number" id="annonce-${jIdx}" min="0" max="${cartes}" value="0" style="width: 80px;"
+              onfocus="if(this.value==='0') this.value='';" 
+              onblur="if(this.value==='') this.value='0';">
+          </div>`;
+      }
+    }
+
+    function validerAnnonces() {
+      annoncesTemp = [];
+      const cartes = sequenceTours[tourIndex];
+
+      joueurs.forEach((_, idx) => {
+        const val = parseInt(document.getElementById(`annonce-${idx}`).value) || 0;
+        annoncesTemp[idx] = val;
+      });
+
+      document.getElementById('phase-annonces').classList.add('hidden');
+      document.getElementById('phase-resultats').classList.remove('hidden');
+      document.getElementById('alert-resultats').classList.add('hidden');
+
+      const zoneRes = document.getElementById('inputs-resultats');
+      zoneRes.innerHTML = '';
+      joueurs.forEach((j, idx) => {
+        zoneRes.innerHTML += `
+          <div class="player-row">
+            <span style="flex:1;">${j.nom} (Annonce: ${annoncesTemp[idx]}) :</span>
+            <input type="number" id="resultat-${idx}" min="0" max="${cartes}" value="0" style="width: 80px;"
+              onfocus="if(this.value==='0') this.value='';" 
+              onblur="if(this.value==='') this.value='0';">
+          </div>`;
+      });
+    }
+
+    function validerTour() {
+      const cartes = sequenceTours[tourIndex];
+      let sommeResultats = 0;
+
+      joueurs.forEach((_, idx) => {
+        const inp = document.getElementById(`resultat-${idx}`);
+        sommeResultats += parseInt(inp.value) || 0;
+      });
+
+      const alertEl = document.getElementById('alert-resultats');
+
+      // Contrôle réalisé uniquement au clic sur Valider
+      if (sommeResultats !== cartes) {
+        alertEl.innerText = `⚠️ Le total des plis réalisés est de ${sommeResultats}. Il doit être égal à ${cartes} !`;
+        alertEl.classList.remove('hidden');
+        return; // Bloque la validation
+      }
+
+      alertEl.classList.add('hidden');
+
+      const detailsTour = [];
+      joueurs.forEach((j, idx) => {
+        const annonce = annoncesTemp[idx];
+        const fait = parseInt(document.getElementById(`resultat-${idx}`).value) || 0;
+
+        if (annonce === fait) {
+          j.score += 10 + fait;
+        } else {
+          j.score += fait;
+        }
+
+        detailsTour[idx] = { 
+          annonce, 
+          fait, 
+          reussi: annonce === fait,
+          scoreApres: j.score 
+        };
+      });
+
+      historiqueTours.push({ tour: tourIndex + 1, cartes, details: detailsTour });
+
+      afficherScores();
+      afficherHistorique();
+      tourIndex++;
+
+      if (tourIndex < sequenceTours.length) {
+        donneurIndex = (donneurIndex + 1) % joueurs.length;
+        afficherTour();
+      } else {
+        afficherFinDePartie();
+      }
+    }
+
+    function afficherScores() {
+      const tbody = document.getElementById('body-scores');
+      tbody.innerHTML = '';
+      joueurs.forEach(j => {
+        tbody.innerHTML += `<tr><td>${j.nom}</td><td><strong>${j.score}</strong></td></tr>`;
+      });
+    }
+
+    function afficherHistorique() {
+      const tbody = document.getElementById('body-history');
+      tbody.innerHTML = '';
+
+      historiqueTours.forEach(h => {
+        let row = `<tr><td><strong>N°${h.tour}</strong></td><td>${h.cartes}</td>`;
+        joueurs.forEach((_, idx) => {
+          const d = h.details[idx];
+          const style = d.reussi ? 'color: #4caf50; font-weight: bold;' : 'color: #ff5252;';
+          row += `<td class="history-cell">
+            <span style="${style}">${d.annonce} / ${d.fait}</span>
+            <div class="score-cumul">${d.scoreApres} pts</div>
+          </td>`;
+        });
+        row += '</tr>';
+        tbody.innerHTML += row;
+      });
+    }
+
+    function afficherFinDePartie() {
+      document.getElementById('step-game').classList.add('hidden');
+      document.getElementById('step-scores').classList.add('hidden');
+      document.getElementById('step-final').classList.remove('hidden');
+
+      const classement = [...joueurs].sort((a, b) => b.score - a.score);
+
+      const tbody = document.getElementById('body-classement');
+      tbody.innerHTML = '';
+      classement.forEach((j, idx) => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${idx === 0 ? '🥇 1' : idx === 1 ? '🥈 2' : idx === 2 ? '🥉 3' : idx + 1}</td>
+            <td><strong>${j.nom}</strong></td>
+            <td>${j.score} pts</td>
+          </tr>`;
+      });
+    }
+  </script>
+</body>
+</html>
