@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -222,15 +221,18 @@
 
       const zoneRes = document.getElementById('inputs-resultats');
       zoneRes.innerHTML = '';
-      joueurs.forEach((j, idx) => {
+
+      for (let i = 0; i < joueurs.length; i++) {
+        const jIdx = (donneurIndex + i) % joueurs.length;
+        const estDonneur = i === 0 ? ' (Donneur)' : '';
         zoneRes.innerHTML += `
           <div class="player-row">
-            <span style="flex:1;">${j.nom} (Annonce: ${annoncesTemp[idx]}) :</span>
-            <input type="number" id="resultat-${idx}" min="0" max="${cartes}" value="0" style="width: 80px;"
+            <span style="flex:1;">${joueurs[jIdx].nom}${estDonneur} (Annonce: ${annoncesTemp[jIdx]}) :</span>
+            <input type="number" id="resultat-${jIdx}" min="0" max="${cartes}" value="0" style="width: 80px;"
               onfocus="if(this.value==='0') this.value='';" 
               onblur="if(this.value==='') this.value='0';">
           </div>`;
-      });
+      }
     }
 
     function validerTour() {
@@ -244,11 +246,10 @@
 
       const alertEl = document.getElementById('alert-resultats');
 
-      // Contrôle réalisé uniquement au clic sur Valider
       if (sommeResultats !== cartes) {
         alertEl.innerText = `⚠️ Le total des plis réalisés est de ${sommeResultats}. Il doit être égal à ${cartes} !`;
         alertEl.classList.remove('hidden');
-        return; // Bloque la validation
+        return;
       }
 
       alertEl.classList.add('hidden');
