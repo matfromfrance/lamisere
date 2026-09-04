@@ -11,6 +11,7 @@
     input, button { width: 100%; padding: 10px; margin: 5px 0; border-radius: 5px; border: none; font-size: 16px; box-sizing: border-box; }
     button { background: #4caf50; color: white; font-weight: bold; cursor: pointer; }
     button:hover { opacity: 0.9; }
+    .btn-danger { background: #ff5252; margin-top: 15px; }
     .player-row { display: flex; gap: 10px; margin-bottom: 8px; align-items: center; }
     .player-row input { margin: 0; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
@@ -98,6 +99,7 @@
         <tbody id="body-history"></tbody>
       </table>
     </div>
+    <button onclick="reinitialiserPartie()" class="btn-danger">Réinitialiser la partie</button>
   </div>
 
   <!-- STEP 4: CLASSEMENT FINAL -->
@@ -110,7 +112,7 @@
       </thead>
       <tbody id="body-classement"></tbody>
     </table>
-    <button onclick="location.reload()" style="margin-top: 15px;">Nouvelle Partie</button>
+    <button onclick="reinitialiserPartie()" style="margin-top: 15px;">Nouvelle Partie</button>
   </div>
 
   <script>
@@ -120,7 +122,70 @@
     let donneurIndex = 0;
     let annoncesTemp = [];
     let historiqueTours = [];
+    let phaseActuelle = 'annonces'; // 'annonces' ou 'resultats'
 
+    // --- FONCTIONS DE SAUVEGARDE ET CHARGEMENT ---
+    function sauvegarder() {
+      const etat = {
+        joueurs,
+        sequenceTours,
+        tourIndex,
+        donneurIndex,
+        annoncesTemp,
+        historiqueTours,
+        phaseActuelle
+      };
+      localStorage.setItem('la_misere_save', JSON.stringify(etat));
+    }
+
+    function chargerSauvegarde() {
+      const save = localStorage.getItem('la_misere_save');
+      if (!save) return false;
+
+      try {
+        const etat = JSON.parse(save);
+        joueurs = etat.joueurs;
+        sequenceTours = etat.sequenceTours;
+        tourIndex = etat.tourIndex;
+        donneurIndex = etat.donneurIndex;
+        annoncesTemp = etat.annoncesTemp;
+        historiqueTours = etat.historiqueTours;
+        phaseActuelle = etat.phaseActuelle || 'annonces';
+
+        document.getElementById('step-config').classList.add('hidden');
+        document.getElementById('step-dealer').classList.add('hidden');
+        
+        if (tourIndex >= sequenceTours.length) {
+          afficherFinDePartie();
+        } else {
+          document.getElementById('step-game').classList.remove('hidden');
+          document.getElementById('step-scores').classList.remove('hidden');
+          document.getElementById('step-history').classList.remove('hidden');
+          
+          preparerEnteteHistorique();
+          afficherScores();
+          afficherHistorique();
+
+          if (phaseActuelle === 'resultats') {
+            afficherPhaseResultats();
+          } else {
+            afficherTour();
+          }
+        }
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function reinitialiserPartie() {
+      if (confirm("Voulez-vous vraiment effacer la partie en cours ?")) {
+        localStorage.removeItem('la_misere_save');
+        location.reload();
+      }
+    }
+
+    // --- LOGIQUE DU JEU ---
     function genererChampsNoms() {
       const nbInput = document.getElementById('nbJoueurs');
       const nb = parseInt(nbInput.value) || 4;
@@ -133,7 +198,6 @@
             onblur="if(this.value==='') this.value='Joueur ${i + 1}';">`;
       }
     }
-    genererChampsNoms();
 
     function demarrerPartie() {
       const inputs = document.querySelectorAll('.nom-joueur');
@@ -170,6 +234,7 @@
       preparerEnteteHistorique();
       afficherTour();
       afficherScores();
+      sauvegarder();
     }
 
     function preparerEnteteHistorique() {
@@ -181,6 +246,7 @@
     }
 
     function afficherTour() {
+      phaseActuelle = 'annonces';
       const cartes = sequenceTours[tourIndex];
       document.getElementById('titre-tour').innerText = `Tour ${tourIndex + 1} / ${sequenceTours.length}`;
       document.getElementById('info-cartes').innerText = `Nombre de carte(s) distribuée(s) : ${cartes}`;
@@ -208,12 +274,21 @@
 
     function validerAnnonces() {
       annoncesTemp = [];
-      const cartes = sequenceTours[tourIndex];
-
       joueurs.forEach((_, idx) => {
         const val = parseInt(document.getElementById(`annonce-${idx}`).value) || 0;
         annoncesTemp[idx] = val;
       });
+
+      phaseActuelle = 'resultats';
+      sauvegarder();
+      afficherPhaseResultats();
+    }
+
+    function afficherPhaseResultats() {
+      const cartes = sequenceTours[tourIndex];
+      document.getElementById('titre-tour').innerText = `Tour ${tourIndex + 1} / ${sequenceTours.length}`;
+      document.getElementById('info-cartes').innerText = `Nombre de carte(s) distribuée(s) : ${cartes}`;
+      document.getElementById('dealer-actuel').innerText = `Donneur : ${joueurs[donneurIndex].nom}`;
 
       document.getElementById('phase-annonces').classList.add('hidden');
       document.getElementById('phase-resultats').classList.remove('hidden');
@@ -285,6 +360,8 @@
       } else {
         afficherFinDePartie();
       }
+      
+      sauvegarder();
     }
 
     function afficherScores() {
@@ -332,6 +409,10 @@
           </tr>`;
       });
     }
+
+    // Initialisation
+    genererChampsNoms();
+    chargerSauvegarde();
   </script>
 </body>
 </html>
