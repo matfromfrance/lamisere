@@ -5,8 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>La misère</title>
   <style>
-    body { font-family: system-ui, -apple-system, sans-serif; padding: 15px; background: #121212; color: #fff; max-width: 700px; margin: 0 auto; }
-    h1, h2 { text-align: center; color: #4caf50; margin-bottom: 10px; }
+    body { font-family: system-ui, -apple-system, sans-serif; padding: 15px; background: #121212; color: #fff; max-width: 700px; margin: 0 auto; display: flex; flex-direction: column; min-height: 95vh; }
+    .content { flex: 1; }
+    h1 { text-align: center; color: #4caf50; margin-bottom: 2px; }
+    .subtitle { text-align: center; color: #aaa; font-size: 14px; font-style: italic; margin-top: 0; margin-bottom: 20px; }
     .card { background: #1e1e1e; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #333; }
     input, button { width: 100%; padding: 10px; margin: 5px 0; border-radius: 5px; border: none; font-size: 16px; box-sizing: border-box; }
     button { background: #4caf50; color: white; font-weight: bold; cursor: pointer; }
@@ -23,97 +25,105 @@
     .table-container { overflow-x: auto; }
     .history-cell { font-size: 12px; }
     .score-cumul { font-size: 11px; opacity: 0.8; }
+    footer { text-align: center; font-size: 12px; color: #666; margin-top: 20px; padding: 10px 0; }
   </style>
 </head>
 <body>
 
-  <h1>La misère</h1>
+  <div class="content">
+    <h1>La misère</h1>
+    <p class="subtitle">Sauvegarde active pour que david ne brule pas :-)</p>
 
-  <!-- STEP 1: CONFIGURATION -->
-  <div id="step-config" class="card">
-    <h2>Configuration</h2>
-    <label for="nbJoueurs">Nombre de joueurs :</label>
-    <input type="number" id="nbJoueurs" min="2" max="10" value="4"
-      onfocus="if(this.value==='4' || this.value==='0') this.value='';" 
-      onblur="if(this.value==='') this.value='4';" 
-      onchange="genererChampsNoms()">
-    
-    <div id="zone-noms"></div>
+    <!-- STEP 1: CONFIGURATION -->
+    <div id="step-config" class="card">
+      <h2>Configuration</h2>
+      <label for="nbJoueurs">Nombre de joueurs :</label>
+      <input type="number" id="nbJoueurs" min="2" max="10" value="4"
+        onfocus="if(this.value==='4' || this.value==='0') this.value='';" 
+        onblur="if(this.value==='') this.value='4';" 
+        onchange="genererChampsNoms()">
+      
+      <div id="zone-noms"></div>
 
-    <button onclick="demarrerPartie()">Démarrer la partie</button>
-  </div>
-
-  <!-- STEP 2: CHOIX DU PREMIER DISTRIBUTEUR -->
-  <div id="step-dealer" class="card hidden">
-    <h2>Premier Distributeur</h2>
-    <p style="text-align: center;">Qui distribue au Tour 1 ?</p>
-    <div id="zone-choix-dealer"></div>
-  </div>
-
-  <!-- STEP 3: JEU (TOURS) -->
-  <div id="step-game" class="card hidden">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-      <h2 id="titre-tour" style="margin:0;">Tour 1</h2>
-      <span id="dealer-actuel" class="badge"></span>
-    </div>
-    <p style="text-align: center; color: #aaa;" id="info-cartes"></p>
-
-    <!-- Phase Annonces -->
-    <div id="phase-annonces">
-      <h3>1. Annonces des plis</h3>
-      <div id="inputs-annonces"></div>
-      <button id="btn-valider-annonces" onclick="validerAnnonces()">Valider les annonces</button>
+      <button onclick="demarrerPartie()">Démarrer la partie</button>
     </div>
 
-    <!-- Phase Résultats -->
-    <div id="phase-resultats" class="hidden">
-      <h3>2. Plis réalisés</h3>
-      <div id="inputs-resultats"></div>
-      <p id="alert-resultats" class="alert-text hidden"></p>
-      <button id="btn-valider-resultats" onclick="validerTour()">Valider le tour</button>
+    <!-- STEP 2: CHOIX DU PREMIER DISTRIBUTEUR -->
+    <div id="step-dealer" class="card hidden">
+      <h2>Premier Distributeur</h2>
+      <p style="text-align: center;">Qui distribue au Tour 1 ?</p>
+      <div id="zone-choix-dealer"></div>
     </div>
-  </div>
 
-  <!-- TABLEAU DES SCORES EN DIRECT -->
-  <div id="step-scores" class="card hidden">
-    <h3>Scores actuels</h3>
-    <table>
-      <thead>
-        <tr><th>Joueur</th><th>Score</th></tr>
-      </thead>
-      <tbody id="body-scores"></tbody>
-    </table>
-  </div>
+    <!-- STEP 3: JEU (TOURS) -->
+    <div id="step-game" class="card hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2 id="titre-tour" style="margin:0;">Tour 1</h2>
+        <span id="dealer-actuel" class="badge"></span>
+      </div>
+      <p style="text-align: center; color: #aaa;" id="info-cartes"></p>
 
-  <!-- HISTORIQUE COMPLET DES TOURS -->
-  <div id="step-history" class="card hidden">
-    <h3>Synthèse de la partie</h3>
-    <div class="table-container">
+      <!-- Phase Annonces -->
+      <div id="phase-annonces">
+        <h3>1. Annonces des plis</h3>
+        <div id="inputs-annonces"></div>
+        <button id="btn-valider-annonces" onclick="validerAnnonces()">Valider les annonces</button>
+      </div>
+
+      <!-- Phase Résultats -->
+      <div id="phase-resultats" class="hidden">
+        <h3>2. Plis réalisés</h3>
+        <div id="inputs-resultats"></div>
+        <p id="alert-resultats" class="alert-text hidden"></p>
+        <button id="btn-valider-resultats" onclick="validerTour()">Valider le tour</button>
+      </div>
+    </div>
+
+    <!-- TABLEAU DES SCORES EN DIRECT -->
+    <div id="step-scores" class="card hidden">
+      <h3>Scores actuels</h3>
       <table>
         <thead>
-          <tr id="head-history">
-            <th>Tour</th>
-            <th>Cartes</th>
-          </tr>
+          <tr><th>Joueur</th><th>Score</th></tr>
         </thead>
-        <tbody id="body-history"></tbody>
+        <tbody id="body-scores"></tbody>
       </table>
     </div>
-    <button onclick="reinitialiserPartie()" class="btn-danger">Réinitialiser la partie</button>
+
+    <!-- HISTORIQUE COMPLET DES TOURS -->
+    <div id="step-history" class="card hidden">
+      <h3>Synthèse de la partie</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr id="head-history">
+              <th>Tour</th>
+              <th>Cartes</th>
+            </tr>
+          </thead>
+          <tbody id="body-history"></tbody>
+        </table>
+      </div>
+      <button onclick="reinitialiserPartie()" class="btn-danger">Réinitialiser la partie</button>
+    </div>
+
+    <!-- STEP 4: CLASSEMENT FINAL -->
+    <div id="step-final" class="card hidden">
+      <h2>🎉 Fin de la partie !</h2>
+      <p style="text-align: center;">Voici le classement final :</p>
+      <table>
+        <thead>
+          <tr><th>Pos.</th><th>Joueur</th><th>Score Final</th></tr>
+        </thead>
+        <tbody id="body-classement"></tbody>
+      </table>
+      <button onclick="reinitialiserPartie()" style="margin-top: 15px;">Nouvelle Partie</button>
+    </div>
   </div>
 
-  <!-- STEP 4: CLASSEMENT FINAL -->
-  <div id="step-final" class="card hidden">
-    <h2>🎉 Fin de la partie !</h2>
-    <p style="text-align: center;">Voici le classement final :</p>
-    <table>
-      <thead>
-        <tr><th>Pos.</th><th>Joueur</th><th>Score Final</th></tr>
-      </thead>
-      <tbody id="body-classement"></tbody>
-    </table>
-    <button onclick="reinitialiserPartie()" style="margin-top: 15px;">Nouvelle Partie</button>
-  </div>
+  <footer>
+    Version 1.2.0
+  </footer>
 
   <script>
     let joueurs = [];
@@ -122,7 +132,7 @@
     let donneurIndex = 0;
     let annoncesTemp = [];
     let historiqueTours = [];
-    let phaseActuelle = 'annonces'; // 'annonces' ou 'resultats'
+    let phaseActuelle = 'annonces';
 
     // --- FONCTIONS DE SAUVEGARDE ET CHARGEMENT ---
     function sauvegarder() {
